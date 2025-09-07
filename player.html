@@ -22,9 +22,8 @@
     .player-container {
       position: relative;
       width: 100%;
-      max-width: 900px; /* 📌 ancho máximo que encaje en tu plantilla */
+      max-width: 1300px; /* ajusta al tamaño de tu cuadrícula */
       background: #000;
-      overflow: hidden;
     }
 
     /* Mantener proporción 16:9 */
@@ -40,7 +39,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: contain; /* Ajusta el video sin recortarlo */
+      object-fit: contain;
       background: #000;
     }
   </style>
@@ -53,7 +52,6 @@
   <!-- Plyr JS -->
   <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
   <script>
-    // Obtener parámetros de la URL
     const urlParams = new URLSearchParams(window.location.search);
     const videoUrl = urlParams.get('video');
 
@@ -62,13 +60,10 @@
     if (videoUrl) {
       const source = document.createElement('source');
       source.src = videoUrl;
-      source.type = videoUrl.endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
+      source.type = videoUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
       videoElement.appendChild(source);
-    } else {
-      document.body.innerHTML = "<h2 style='color:white'>❌ No se encontró parámetro ?video= en la URL.</h2>";
     }
 
-    // Inicializar Plyr
     const player = new Plyr('#player', {
       controls: [
         'play-large', 'play', 'progress', 'current-time', 'duration',
@@ -81,4 +76,3 @@
   </script>
 </body>
 </html>
-

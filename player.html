@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>S&L Movie Player</title>
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+  <style>
+    /* IMPORTANTE: no usar vh; el iframe (tu Blogger) controla el alto */
+    html, body { height: 100%; margin: 0; background: #000; }
+    .player-wrapper { width: 100%; height: 100%; position: relative; }
+    video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; background:#000; }
+    /* Botón de play clásico centrado */
+    .plyr__control--overlaid { background: rgba(0,0,0,0.6); border-radius: 50%; width:64px; height:64px; }
+    .plyr__control--overlaid svg { width:28px; height:28px; fill:#fff; }
+  </style>
+</head>
+<body>
+  <div class="player-wrapper">
+    <video id="player" playsinline controls crossorigin></video>
+  </div>
+
+  <!-- HLS primero, luego Plyr -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+
+  <script>
+  (function(){
+    const params = new URLSearchParams(window.location.search);
+    const videoUrl = params.get('video');        // ?video=
+    const subsUrl  = params.get('subs');         // ?subs=
+    const subsLabel= params.get('label') || 'Subtítulos';
+
+    const video = document.getElementById('player');
+    let hls = null;
+
+    // Opciones base de Plyr (controles completos)
+    const options = {
+      controls: [
+        'play-large','play','rewind','fast-forward',
+        'progress','current-time','duration','mute','volume',
+        'captions','settings','pip','airplay','fullscreen'
+      ],
+      settings: ['quality','speed','captions'],
+      speed: { selected: 1, options: [0.5,1,1.25,1.5,2] },
+      quality: { default: null, options: [], onChange: (newQuality) => {
+        // al cambiar calidad, si HLS está activo, escoger nivel
+        if (hls && hls.levels && hls.levels.length) {
+          for (let i = 0; i < hls.levels.length; i++) {
+            if (hls.levels[i].height === newQuality) { hls.currentLevel = i; break; }
+          }
+        }
+      }},
+      storage: { enabled: true, key: 'sl-movie-player' }
+    };
+
+    // Subtítulos (si vienen)
+    function attachSubtitles() {
+      if (subsUrl) {
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = decodeURIComponent(subsLabel);
+        track.src = subsUrl;
+        track.default = true;
+        video.appendChild(track);
+      }
+    }
+
+    // Guardar / restaurar progreso, usando la URL del video como clave
+    function installResume(playerObj, key) {
+      try {
+        const storageKey = 'progress-' + encodeURIComponent(key);
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          playerObj.once('canplay', () => { playerObj.currentTime = parseFloat(saved); });
+        }
+        playerObj.on('timeupdate', () => {
+          localStorage.setItem(storageKey, playerObj.currentTime);
+        });
+      } catch(e) { console.warn('Error resume:', e); }
+    }
+
+    if (!videoUrl) {
+      // Si no se pasa video, mostramos un aviso simple (no demo)
+      const msg = document.createElement('div');
+      msg.style.color = '#fff'; msg.style.padding = '16px';
+      msg.textContent = 'No se encontró parámetro ?video= en la URL.';
+      document.querySelector('.player-wrapper').appendChild(msg);
+      return;
+    }
+
+    // Si es HLS (.m3u8) y Hls soportado -> usar hls.js y luego crear Plyr con opciones de calidad
+    if (videoUrl.endsWith('.m3u8') && window.Hls && Hls.isSupported()) {
+      hls = new Hls();
+      hls.loadSource(videoUrl);
+      hls.attachMedia(video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+        // extraer calidades disponibles (height) y ordenarlas descendente
+        const heights = hls.levels.map(l => l.height).filter(Boolean);
+        const uniqueHeights = Array.from(new Set(heights)).sort((a,b)=>b-a);
+        if (uniqueHeights.length) {
+          options.quality.options = uniqueHeights;
+          options.quality.default = uniqueHeights[0];
+        }
+        // Crear Plyr tras parsear manifest (así se llena calidad)
+        window.player = new Plyr(video, options);
+        attachSubtitles();
+        installResume(window.player, videoUrl);
+      });
+
+    } else {
+      // MP4 u otro formato reproducible por el navegador
+      window.player = new Plyr(video, options);
+      // asignar la fuente (sin demo hardcodeado)
+      window.player.source = {
+        type: 'video',
+        sources: [{ src: videoUrl, type: videoUrl.endsWith('.mp4') ? 'video/mp4' : '' }]
+      };
+      attachSubtitles();
+      installResume(window.player, videoUrl);
+    }
+
+  })();
+  </script>
+</body>
+</html>

@@ -18,29 +18,41 @@
       height: 100vh;
     }
 
+    /* 🔥 Contenedor con relación fija 16:9 */
     .player-wrapper {
       width: 100%;
       max-width: 1020px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      position: relative;
     }
 
     video {
       width: 100%;
+      height: 100%;
+      object-fit: contain; /* mantiene proporción del video */
       border-radius: 0px;
-      overflow: hidden;
-      background: #000;
       display: block;
+      background: #000;
     }
 
     /* 🔥 Pantalla completa ocupa todo */
+    :fullscreen .player-wrapper,
+    :-webkit-full-screen .player-wrapper,
+    :-moz-full-screen .player-wrapper {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      border-radius: 0 !important;
+      background: #000;
+    }
+
     :fullscreen video,
     :-webkit-full-screen video,
     :-moz-full-screen video {
       width: 100% !important;
       height: 100% !important;
-      max-width: none !important;
-      border-radius: 0 !important;
       object-fit: contain;
-      background: #000;
     }
 
     /* Personalizar botón Play */
@@ -151,7 +163,7 @@
       });
     }
 
-    // 🔥 Auto-ocultar controles en móviles
+    // 🔥 Auto-ocultar controles
     function enableAutoHideControls(player) {
       let hideTimeout;
 
@@ -162,15 +174,13 @@
           if (!player.paused) {
             player.elements.container.classList.add("plyr--hide-controls");
           }
-        }, 3000); // 3 segundos
+        }, 3000);
       }
 
-      // Detectar interacción del usuario
       ["mousemove", "touchstart", "touchmove"].forEach(evt => {
         player.elements.container.addEventListener(evt, resetHideTimer);
       });
 
-      // Resetear al iniciar
       resetHideTimer();
     }
   </script>

@@ -17,15 +17,34 @@
       align-items: center;
       height: 100vh;
     }
-    video {
+
+    .player-wrapper {
       width: 100%;
       max-width: 1020px;
+    }
+
+    video {
+      width: 100%;
       border-radius: 0px;
       overflow: hidden;
       background: #000;
+      display: block;
     }
+
+    /* 🔥 Pantalla completa ocupa todo */
+    :fullscreen video,
+    :-webkit-full-screen video,
+    :-moz-full-screen video {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      border-radius: 0 !important;
+      object-fit: contain;
+      background: #000;
+    }
+
     /* Personalizar botón Play */
-  .plyr__control--overlaid {
+    .plyr__control--overlaid {
       background: rgba(0, 0, 0, 0.6);
       border-radius: 50%;
       width: 60px;
@@ -35,6 +54,30 @@
       width: 25px;
       height: 25px;
       fill: #fff;
+    }
+
+    /* 🔥 Ajustes móviles */
+    @media (max-width: 600px) {
+      .plyr__control--overlaid {
+        width: 50px;
+        height: 50px;
+      }
+      .plyr__control--overlaid svg {
+        width: 20px;
+        height: 20px;
+      }
+      .plyr__controls {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px;
+      }
+    }
+
+    /* 🔥 Clase para ocultar controles */
+    .plyr--hide-controls .plyr__controls {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
     }
   </style>
 </head>
@@ -73,7 +116,7 @@
         hls.loadSource(videoUrl);
         hls.attachMedia(video);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
           const availableQualities = hls.levels.map(level => level.height).sort((a, b) => a - b);
           options.quality.options = availableQualities;
           options.quality.onChange = (quality) => {
@@ -83,18 +126,18 @@
           };
 
           player = new Plyr(video, options);
-
-          // 🔥 Guardar y restaurar progreso
           restoreProgress(player, videoUrl);
+          enableAutoHideControls(player);
         });
       } else {
         video.src = videoUrl;
         player = new Plyr(video, options);
         restoreProgress(player, videoUrl);
+        enableAutoHideControls(player);
       }
     }
 
-    // Función para guardar/restaurar progreso en localStorage
+    // Guardar/restaurar progreso
     function restoreProgress(player, key) {
       const savedTime = localStorage.getItem("progress-" + key);
       if (savedTime) {
@@ -106,6 +149,29 @@
       player.on("timeupdate", () => {
         localStorage.setItem("progress-" + key, player.currentTime);
       });
+    }
+
+    // 🔥 Auto-ocultar controles en móviles
+    function enableAutoHideControls(player) {
+      let hideTimeout;
+
+      function resetHideTimer() {
+        clearTimeout(hideTimeout);
+        player.elements.container.classList.remove("plyr--hide-controls");
+        hideTimeout = setTimeout(() => {
+          if (!player.paused) {
+            player.elements.container.classList.add("plyr--hide-controls");
+          }
+        }, 3000); // 3 segundos
+      }
+
+      // Detectar interacción del usuario
+      ["mousemove", "touchstart", "touchmove"].forEach(evt => {
+        player.elements.container.addEventListener(evt, resetHideTimer);
+      });
+
+      // Resetear al iniciar
+      resetHideTimer();
     }
   </script>
 </body>

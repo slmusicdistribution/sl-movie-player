@@ -22,18 +22,15 @@
     .player-wrapper {
       width: 100%;
       max-width: 1020px;
-      position: relative;
-      padding-top: 56.25%; /* Relación 16:9 */
+      aspect-ratio: 16 / 9; /* Relación fija */
       background: #000;
+      position: relative;
     }
 
     video {
-      position: absolute;
-      top: 0;
-      left: 0;
       width: 100%;
       height: 100%;
-      object-fit: contain; /* No se deforma el video */
+      object-fit: contain; /* mantiene proporción sin deformar */
       background: #000;
     }
 
@@ -42,7 +39,6 @@
       width: 100% !important;
       height: 100% !important;
       max-width: none !important;
-      padding-top: 0 !important;
     }
 
     :fullscreen video {

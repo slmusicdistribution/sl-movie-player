@@ -20,23 +20,34 @@
     }
 
     .player-container {
+      position: relative;
       width: 100%;
-      max-width: 1000px; /* ajusta a tu plantilla */
-      aspect-ratio: 16/9;
+      max-width: 1300px; /* 📌 ancho máximo que encaje en tu plantilla */
       background: #000;
+      overflow: hidden;
+    }
+
+    /* Mantener proporción 16:9 */
+    .player-container::before {
+      content: "";
+      display: block;
+      padding-top: 56.25%; /* 16:9 */
     }
 
     video {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
+      object-fit: contain; /* Ajusta el video sin recortarlo */
+      background: #000;
     }
   </style>
 </head>
 <body>
   <div class="player-container">
-    <video id="player" playsinline controls>
-      <!-- Aquí se inyectará la URL -->
-    </video>
+    <video id="player" playsinline controls></video>
   </div>
 
   <!-- Plyr JS -->
@@ -49,7 +60,6 @@
     const videoElement = document.getElementById('player');
 
     if (videoUrl) {
-      // Crear una etiqueta <source> dinámicamente
       const source = document.createElement('source');
       source.src = videoUrl;
       source.type = videoUrl.endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
@@ -71,6 +81,3 @@
   </script>
 </body>
 </html>
-
-
-

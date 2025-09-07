@@ -1,78 +1,185 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>S&L Movie Player</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>S&L Movie Player — Debug</title>
 
-  <!-- Plyr CSS -->
   <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
-
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-
-    .player-container {
-      position: relative;
-      width: 100%;
-      max-width: 1300px; /* ajusta al tamaño de tu cuadrícula */
-      background: #000;
-    }
-
-    /* Mantener proporción 16:9 */
-    .player-container::before {
-      content: "";
-      display: block;
-      padding-top: 56.25%; /* 16:9 */
-    }
-
-    video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #000;
-    }
+    html,body{height:100%;margin:0;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}
+    .wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}
+    .player-box{width:100%;max-width:1280px;position:relative;background:#000;overflow:hidden}
+    /* proporción 16:9 estable con padding trick */
+    .player-box::before{content:"";display:block;padding-top:56.25%}
+    video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000}
+    /* overlay de depuración */
+    #status{position:absolute;left:10px;top:10px;background:rgba(0,0,0,0.6);padding:8px 10px;border-radius:6px;font-size:13px;z-index:50;max-width:60%}
+    #debugLog{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,0.5);padding:8px;border-radius:6px;font-size:12px;max-width:60%;max-height:28%;overflow:auto;z-index:50}
+    .hint{font-size:13px;opacity:0.9;color:#ddd;margin-top:6px}
   </style>
 </head>
 <body>
-  <div class="player-container">
-    <video id="player" playsinline controls></video>
+  <div class="wrap">
+    <div class="player-box" id="playerBox">
+      <div id="status">Inicializando…</div>
+      <video id="player" playsinline controls crossorigin="anonymous"></video>
+      <pre id="debugLog" aria-hidden="false"></pre>
+    </div>
   </div>
 
-  <!-- Plyr JS -->
+  <!-- HLS y Plyr -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const videoUrl = urlParams.get('video');
+  (function(){
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('debugLog');
+    function setStatus(msg){ statusEl.textContent = msg; console.log(msg); appendLog(msg); }
+    function appendLog(msg){ const time = new Date().toLocaleTimeString(); logEl.textContent = time + " — " + msg + "\n" + logEl.textContent; }
 
-    const videoElement = document.getElementById('player');
-
-    if (videoUrl) {
-      const source = document.createElement('source');
-      source.src = videoUrl;
-      source.type = videoUrl.includes('.m3u8') ? 'application/x-mpegURL' : 'video/mp4';
-      videoElement.appendChild(source);
+    function showError(msg){
+      setStatus("ERROR: " + msg);
+      appendLog("ERROR_DETAIL: " + msg);
     }
 
-    const player = new Plyr('#player', {
-      controls: [
-        'play-large', 'play', 'progress', 'current-time', 'duration',
-        'rewind', 'fast-forward', 'mute', 'volume',
-        'settings', 'fullscreen'
-      ],
-      settings: ['quality', 'speed', 'captions'],
-      storage: { enabled: true, key: 'sl-movie-player' }
+    const params = new URLSearchParams(window.location.search);
+    const rawVideo = params.get('video') || '';
+    const subs = params.get('subs') || '';
+    const label = decodeURIComponent(params.get('label') || 'Subtítulos');
+
+    setStatus("Parámetro ?video= -> " + (rawVideo ? '[OK]' : '[vacío]'));
+
+    const videoUrl = rawVideo ? decodeURIComponent(rawVideo) : '';
+    const videoEl = document.getElementById('player');
+
+    // eventos del elemento video para debug
+    videoEl.addEventListener('loadedmetadata', ()=> setStatus('loadedmetadata — duración: ' + videoEl.duration));
+    videoEl.addEventListener('canplay', ()=> setStatus('canplay'));
+    videoEl.addEventListener('canplaythrough', ()=> setStatus('canplaythrough'));
+    videoEl.addEventListener('playing', ()=> setStatus('playing (se está reproduciendo)'));
+    videoEl.addEventListener('pause', ()=> setStatus('paused'));
+    videoEl.addEventListener('error', (e)=>{
+      const err = videoEl.error;
+      showError('Video element error code=' + (err ? err.code : 'null') );
+      console.error('MediaError', err);
     });
+
+    // plugin de reanudar (clave por URL)
+    function installResume(plyrObj, key){
+      try{
+        const k = 'sl-resume-' + encodeURIComponent(key);
+        const saved = localStorage.getItem(k);
+        if(saved){
+          setStatus('Restaurando tiempo guardado: ' + saved + 's');
+          plyrObj.once('canplay', ()=> { try { plyrObj.currentTime = parseFloat(saved); } catch(e){ appendLog('restore err: '+e.message)} });
+        }
+        plyrObj.on('timeupdate', ()=> localStorage.setItem(k, plyrObj.currentTime));
+      }catch(e){ appendLog('installResume error: ' + e.message); }
+    }
+
+    if(!videoUrl){
+      showError('No se encontró parámetro ?video= — abrir player.html?video=URL');
+      return;
+    }
+
+    setStatus('URL decodificada: ' + videoUrl);
+    // añadir subtítulos si vienen
+    function attachSubs(){
+      if(!subs) return;
+      try{
+        const t = document.createElement('track');
+        t.kind = 'subtitles'; t.label = label; t.src = subs; t.default = true; videoEl.appendChild(t);
+        appendLog('Track subtitle added: ' + subs);
+      }catch(e){ appendLog('attachSubs error: ' + e.message); }
+    }
+
+    // Opciones Plyr
+    const options = {
+      controls: [
+        'play-large','play','rewind','fast-forward',
+        'progress','current-time','duration','mute','volume',
+        'captions','settings','pip','airplay','fullscreen'
+      ],
+      settings: ['quality','speed','captions'],
+      speed: { selected: 1, options: [0.5,1,1.25,1.5,2] },
+      quality: { default: null, options: [], onChange: (q)=> { appendLog('Plyr requested quality: ' + q); } },
+      storage: { enabled: true, key: 'sl-movie-player' }
+    };
+
+    // Función para inicializar Plyr + resume
+    function initPlyrWhenReady(){
+      try{
+        window.player = new Plyr('#player', options);
+        appendLog('Plyr init OK');
+        installResume(window.player, videoUrl);
+        setStatus('Reproductor listo — haga click en Play');
+      }catch(e){ showError('Error inicializando Plyr: ' + e.message); }
+    }
+
+    // Si es HLS (.m3u8)
+    if(videoUrl.toLowerCase().includes('.m3u8') && window.Hls && Hls.isSupported()){
+      setStatus('HLS detectado. Usando hls.js');
+      try{
+        const hls = new Hls();
+        hls.loadSource(videoUrl);
+        hls.attachMedia(videoEl);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, (evt,data) => {
+          appendLog('HLS manifest parsed; niveles: ' + hls.levels.length);
+          const heights = hls.levels.map(l=>l.height).filter(Boolean);
+          const uniq = Array.from(new Set(heights)).sort((a,b)=>b-a);
+          if(uniq.length){
+            options.quality.options = uniq;
+            options.quality.default = uniq[0];
+            appendLog('Calidades detectadas: ' + uniq.join(', '));
+          } else {
+            appendLog('No se detectaron heights, se omite quality.');
+          }
+          attachSubs();
+          initPlyrWhenReady();
+        });
+
+        hls.on(Hls.Events.ERROR, function(event, data){
+          appendLog('HLS error: ' + JSON.stringify(data));
+          if(data && data.fatal) showError('HLS fatal error: ' + data.type + ' — ' + data.details);
+        });
+
+      }catch(e){ showError('Excepción HLS: ' + e.message); }
+      return;
+    }
+
+    // Si no es HLS -> MP4 u otro:
+    try{
+      appendLog('Asignando <source> para MP4/archivo directo');
+      const src = document.createElement('source');
+      src.src = videoUrl;
+      src.type = videoUrl.toLowerCase().endsWith('.mp4') ? 'video/mp4' : '';
+      videoEl.appendChild(src);
+      attachSubs();
+      // force load and try to init player when metadata is ready
+      videoEl.load();
+      // si loadedmetadata ocurre -> init Plyr
+      const onMeta = ()=> {
+        appendLog('loadedmetadata evento capturado');
+        initPlyrWhenReady();
+        videoEl.removeEventListener('loadedmetadata', onMeta);
+      };
+      videoEl.addEventListener('loadedmetadata', onMeta);
+      // fallback: si no llega metadata en 4s, intentar init igual (para debug)
+      setTimeout(()=> {
+        if(!window.player){
+          appendLog('Timeout metadata -> inicializando Plyr de todos modos (debug)');
+          initPlyrWhenReady();
+        }
+      }, 4000);
+
+      // intentar autoplay (no obligatorio)
+      videoEl.play().then(()=> appendLog('Autoplay success (browser allowed)').catch(()=>{})).catch(()=> appendLog('Autoplay blocked; espera click del usuario'));
+    }catch(e){ showError('Error asignando fuente: ' + e.message); }
+
+  })();
   </script>
 </body>
 </html>

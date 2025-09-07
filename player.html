@@ -26,25 +26,23 @@
       background: #000;
     }
     /* Personalizar botón Play */
-    .plyr__control--overlaid {
-      background: #e50914 !important; /* Rojo estilo Netflix */
-      color: #fff !important;
-      border-radius: 50% !important;
-      width: 80px !important;
-      height: 80px !important;
-      font-size: 30px !important;
-      box-shadow: 0 0 25px rgba(229, 9, 20, 0.6);
-      transition: transform 0.2s ease-in-out;
+  .plyr__control--overlaid {
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
     }
-    .plyr__control--overlaid:hover {
-      transform: scale(1.1);
+    .plyr__control--overlaid svg {
+      width: 25px;
+      height: 25px;
+      fill: #fff;
     }
   </style>
 </head>
 <body>
-
-  <!-- Video -->
-  <video id="player" playsinline controls></video>
+  <div class="player-wrapper">
+    <video id="player" playsinline controls></video>
+  </div>
 
   <!-- Plyr JS -->
   <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
@@ -113,6 +111,7 @@
   </script>
 </body>
 </html>
+
 
 
 

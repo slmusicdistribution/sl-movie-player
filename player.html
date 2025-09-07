@@ -12,7 +12,8 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
     }
     .player-wrapper {
       width: 100%;
@@ -21,19 +22,19 @@
     video {
       width: 100%;
       height: 100%;
-      object-fit: contain; /* evita que se corte el video */
+      object-fit: contain;
       background: #000;
     }
-    /* Estilo del botón de play: clásico */
+    /* Botón de play más clásico */
     .plyr__control--overlaid {
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.7);
       border-radius: 50%;
       width: 60px;
       height: 60px;
     }
     .plyr__control--overlaid svg {
-      width: 25px;
-      height: 25px;
+      width: 28px;
+      height: 28px;
       fill: #fff;
     }
   </style>
@@ -44,25 +45,26 @@
   </div>
 
   <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
-    // Obtener URL del video desde parámetro ?video=
+    // Obtener URL del video desde ?video=
     const urlParams = new URLSearchParams(window.location.search);
     const videoUrl = urlParams.get('video');
 
     const player = new Plyr('#player', {
       controls: [
-        'play-large', 'play', 'progress', 'current-time', 'mute', 
-        'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+        'play-large', 'play', 'rewind', 'fast-forward',
+        'progress', 'current-time', 'mute', 'volume',
+        'captions', 'settings', 'fullscreen'
       ],
       settings: ['quality', 'speed', 'captions'],
       speed: { selected: 1, options: [0.5, 1, 1.5, 2] },
-      storage: { enabled: true, key: 'sl-movie-player' }
+      storage: { enabled: true, key: 'sl-movie-player' } // Guarda progreso
     });
 
-    // Asignar el video al reproductor
+    // Cargar video
     if (videoUrl) {
       if (videoUrl.endsWith('.m3u8')) {
-        // Si es un HLS (.m3u8), usar hls.js
         if (Hls.isSupported()) {
           const hls = new Hls();
           hls.loadSource(videoUrl);
@@ -71,14 +73,25 @@
           player.media.src = videoUrl;
         }
       } else {
-        // MP4 normal
         player.source = {
           type: 'video',
           sources: [{ src: videoUrl, type: 'video/mp4' }]
         };
       }
     }
+
+    // Restaurar posición de reproducción
+    const savedTime = localStorage.getItem('sl-movie-player-time');
+    if (savedTime) {
+      player.once('canplay', () => {
+        player.currentTime = parseFloat(savedTime);
+      });
+    }
+
+    // Guardar progreso
+    player.on('timeupdate', () => {
+      localStorage.setItem('sl-movie-player-time', player.currentTime);
+    });
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </body>
 </html>

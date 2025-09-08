@@ -19,13 +19,16 @@
     }
 
     .player-wrapper {
-      width: 100%;
-      max-width: 1020px;
+      width: 1020px;   /* ancho fijo */
+  height: 574px;   /* alto fijo */
+  background: #000;
+  position: relative;
     }
 
     video {
       width: 100%;
       border-radius: 0px;
+      object-fit: contain;
       overflow: hidden;
       background: #000;
       display: block;
@@ -176,3 +179,4 @@
   </script>
 </body>
 </html>
+

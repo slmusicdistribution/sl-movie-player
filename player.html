@@ -19,25 +19,19 @@
     }
 
     .player-wrapper {
-      width: 100%;
-      max-width: 1020px;
-      background: #000; /* fondo negro */
-      position: relative;
-      padding-top: 56.25%; /* Mantener ratio 16:9 */
-      overflow: hidden;
-    }
+  width: 100%;
+  max-width: 1020px;
+  background: #000; /* fondo negro para rellenar */
+}
 
-    video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain; /* se ajusta sin deformarse, rellena con negro */
-      border-radius: 0px;
-      background: #000;
-      display: block;
-    }
+video {
+  width: 100%;
+  height: 570px; /* fija la altura que quieras */
+  object-fit: contain; /* mantiene proporciones y rellena con negro */
+  background: #000;
+  display: block;
+}
+
 
     /* 🔥 Pantalla completa ocupa todo */
     :fullscreen video,
@@ -179,3 +173,4 @@
   </script>
 </body>
 </html>
+

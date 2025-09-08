@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reproductor Plyr</title>
+    <!-- CSS de Plyr -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .plyr {
+            width: 100%;
+            max-width: 900px;
+        }
+    </style>
+</head>
+<body>
+
+    <video class="plyr" controls crossorigin>
+        <!-- Cambia el enlace por el MP4 de Internet Archive -->
+        <source src="https://archive.org/download/mi_video/mi_video.mp4" type="video/mp4" />
+        Tu navegador no soporta este video.
+    </video>
+
+    <!-- JS de Plyr -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <script>
+        const player = new Plyr('.plyr', {
+            autoplay: false,
+            loop: { active: false },
+        });
+    </script>
+</body>
+</html>

@@ -132,6 +132,8 @@ player = new Plyr(video, options);
 restoreProgress(player, videoUrl);
 enableAutoHideControls(player);
 }
+} else {
+console.error("No video URL provided.");
 }
 
 // Guardar/restaurar progreso
@@ -173,6 +175,7 @@ resetHideTimer();
 </script>
 </body>
 </html>
+
 
 
 

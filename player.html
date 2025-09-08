@@ -4,36 +4,46 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>S&L Movie Player</title>
+
+  <!-- Plyr CSS -->
   <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
   <style>
     body {
       margin: 0;
       background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
 
-    /* 🔥 CORRECCIÓN PRINCIPAL: Contenedor de Proporción 16:9 */
     .player-wrapper {
-      position: relative;
       width: 100%;
-      height: 0;
-      padding-bottom: 56.25%; /* Usamos padding-bottom, es más estándar */
-      background-color: #000;
-      overflow: hidden; /* Asegura que nada se salga del contenedor */
+      max-width: 1020px;
     }
 
-    /* 🔥 CORRECCIÓN 2: Forzamos al reproductor y al video a llenar el contenedor */
-    /* Esta regla es más específica para evitar conflictos con Blogger */
-    .player-wrapper .plyr,
-    .player-wrapper video {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100% !important;  /* Usamos !important como último recurso */
-      height: 100% !important; /* para anular los estilos de la plantilla */
-      object-fit: contain;      /* Mantiene la proporción del video */
+    video {
+      width: 100%;
+      border-radius: 0px;
+      overflow: hidden;
+      background: #000;
+      display: block;
     }
 
-    /* --- El resto de tus estilos pueden quedar igual --- */
+    /* 🔥 Pantalla completa ocupa todo */
+    :fullscreen video,
+    :-webkit-full-screen video,
+    :-moz-full-screen video {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      border-radius: 0 !important;
+      object-fit: contain;
+      background: #000;
+    }
+
+    /* Personalizar botón Play */
     .plyr__control--overlaid {
       background: rgba(0, 0, 0, 0.6);
       border-radius: 50%;
@@ -45,6 +55,30 @@
       height: 25px;
       fill: #fff;
     }
+
+    /* 🔥 Ajustes móviles */
+    @media (max-width: 600px) {
+      .plyr__control--overlaid {
+        width: 50px;
+        height: 50px;
+      }
+      .plyr__control--overlaid svg {
+        width: 20px;
+        height: 20px;
+      }
+      .plyr__controls {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px;
+      }
+    }
+
+    /* 🔥 Clase para ocultar controles */
+    .plyr--hide-controls .plyr__controls {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
   </style>
 </head>
 <body>
@@ -52,30 +86,92 @@
     <video id="player" playsinline controls></video>
   </div>
 
+  <!-- Plyr JS -->
   <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
   <script>
-    // El JavaScript no se modifica, está correcto.
     const urlParams = new URLSearchParams(window.location.search);
     const videoUrl = urlParams.get("video");
     const video = document.getElementById("player");
+
+    // Configuración base de Plyr
     const options = {
-      controls: ['play-large', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
-      settings: ['captions', 'quality', 'speed']
+      title: "S&L Movie Player",
+      controls: [
+        'play-large', 'rewind', 'play', 'fast-forward',
+        'progress', 'current-time', 'mute', 'volume',
+        'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+      ],
+      settings: ['captions', 'quality', 'speed'],
+      speed: { selected: 1, options: [0.5, 1, 1.25, 1.5, 2] },
+      quality: { default: 1080, options: [360, 480, 720, 1080], forced: true }
     };
+
     let player;
+
     if (videoUrl) {
       if (Hls.isSupported() && videoUrl.endsWith(".m3u8")) {
         const hls = new Hls();
         hls.loadSource(videoUrl);
         hls.attachMedia(video);
+
         hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          const availableQualities = hls.levels.map(level => level.height).sort((a, b) => a - b);
+          options.quality.options = availableQualities;
+          options.quality.onChange = (quality) => {
+            hls.levels.forEach((level, index) => {
+              if (level.height === quality) hls.currentLevel = index;
+            });
+          };
+
           player = new Plyr(video, options);
+          restoreProgress(player, videoUrl);
+          enableAutoHideControls(player);
         });
       } else {
         video.src = videoUrl;
         player = new Plyr(video, options);
+        restoreProgress(player, videoUrl);
+        enableAutoHideControls(player);
       }
+    }
+
+    // Guardar/restaurar progreso
+    function restoreProgress(player, key) {
+      const savedTime = localStorage.getItem("progress-" + key);
+      if (savedTime) {
+        player.once("canplay", () => {
+          player.currentTime = parseFloat(savedTime);
+        });
+      }
+
+      player.on("timeupdate", () => {
+        localStorage.setItem("progress-" + key, player.currentTime);
+      });
+    }
+
+    // 🔥 Auto-ocultar controles en móviles
+    function enableAutoHideControls(player) {
+      let hideTimeout;
+
+      function resetHideTimer() {
+        clearTimeout(hideTimeout);
+        player.elements.container.classList.remove("plyr--hide-controls");
+        hideTimeout = setTimeout(() => {
+          if (!player.paused) {
+            player.elements.container.classList.add("plyr--hide-controls");
+          }
+        }, 3000); // 3 segundos
+      }
+
+      // Detectar interacción del usuario
+      ["mousemove", "touchstart", "touchmove"].forEach(evt => {
+        player.elements.container.addEventListener(evt, resetHideTimer);
+      });
+
+      // Resetear al iniciar
+      resetHideTimer();
     }
   </script>
 </body>

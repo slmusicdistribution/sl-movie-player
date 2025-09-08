@@ -8,79 +8,80 @@
   <!-- Plyr CSS -->
   <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
 
-  <style>
-    body {
-      margin: 0;
-      background: #000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+ <style>
+  body {
+    margin: 0;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
 
-    .player-wrapper {
-      padding-top: 56.25%;
-      width: 100%;
-      max-width: 1020px;
-    }
+  .player-wrapper {
+    width: 1020px; /* Fixed width */
+    height: 570px; /* Fixed height for 16:9 aspect ratio */
+    overflow: hidden; /* Prevent overflow */
+  }
 
-    video {
-      width: 100%;
-      border-radius: 0px;
-      overflow: hidden;
-      background: #000;
-      display: block;
-    }
+  video {
+    width: 100%; /* Maintain full width of the wrapper */
+    height: 100%; /* Maintain full height of the wrapper */
+    object-fit: cover; /* Ensure the video covers the entire area */
+    border-radius: 0px;
+    background: #000;
+    display: block;
+  }
 
-    /* 🔥 Pantalla completa ocupa todo */
-    :fullscreen video,
-    :-webkit-full-screen video,
-    :-moz-full-screen video {
-      width: 100% !important;
-      height: 100% !important;
-      max-width: none !important;
-      border-radius: 0 !important;
-      object-fit: contain;
-      background: #000;
-    }
+  /* 🔥 Pantalla completa ocupa todo */
+  :fullscreen video,
+  :-webkit-full-screen video,
+  :-moz-full-screen video {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+    object-fit: contain;
+    background: #000;
+  }
 
-    /* Personalizar botón Play */
+  /* Personalizar botón Play */
+  .plyr__control--overlaid {
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+  }
+  .plyr__control--overlaid svg {
+    width: 25px;
+    height: 25px;
+    fill: #fff;
+  }
+
+  /* 🔥 Ajustes móviles */
+  @media (max-width: 600px) {
     .plyr__control--overlaid {
-      background: rgba(0, 0, 0, 0.6);
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
+      width: 50px;
+      height: 50px;
     }
     .plyr__control--overlaid svg {
-      width: 25px;
-      height: 25px;
-      fill: #fff;
+      width: 20px;
+      height: 20px;
     }
+    .plyr__controls {
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px;
+    }
+  }
 
-    /* 🔥 Ajustes móviles */
-    @media (max-width: 600px) {
-      .plyr__control--overlaid {
-        width: 50px;
-        height: 50px;
-      }
-      .plyr__control--overlaid svg {
-        width: 20px;
-        height: 20px;
-      }
-      .plyr__controls {
-        flex-wrap: wrap;
-        gap: 4px;
-        padding: 4px;
-      }
-    }
-
-    /* 🔥 Clase para ocultar controles */
-    .plyr--hide-controls .plyr__controls {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-  </style>
+  /* 🔥 Clase para ocultar controles */
+  .plyr--hide-controls .plyr__controls {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+</style>
 </head>
 <body>
   <div class="player-wrapper">
@@ -177,6 +178,7 @@
   </script>
 </body>
 </html>
+
 
 
 

@@ -9,156 +9,170 @@
   <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
 
   <style>
-body {
-margin: 0;
-background: #000;
-display: flex;
-justify-content: center;
-align-items: center;
-height: 100vh;
-}
-.player-wrapper {
-width: 640px; /* tamaño fijo para el reproductor /
-height: 360px; / tamaño fijo para el reproductor /
-background: #000; / fondo negro para el reproductor /
-position: relative;
-overflow: hidden; / oculta cualquier contenido que sobresalga */
-}
-video {
-width: 100%;      /* llena el ancho del contenedor /
-height: 100%;     / llena el alto del contenedor /
-object-fit: contain; / ajusta el video sin deformarlo /
-border-radius: 0px;
-display: block;    / asegura que se muestre como un bloque /
-background: #000;  / fondo negro */
-}
-/* 🔥 Pantalla completa ocupa todo */
-:fullscreen video,
-:-webkit-full-screen video,
-:-moz-full-screen video {
-width: 100% !important;
-height: 100% !important;
-max-width: none !important;
-border-radius: 0 !important;
-object-fit: contain;
-background: #000;
-}
-/* Personalizar botón Play */
-.plyr__control--overlaid {
-background: rgba(0, 0, 0, 0.6);
-border-radius: 50%;
-width: 60px;
-height: 60px;
-}
-.plyr__control--overlaid svg {
-width: 25px;
-height: 25px;
-fill: #fff;
-}
-/* 🔥 Ajustes móviles */
-@media (max-width: 600px) {
-.plyr__control--overlaid {
-width: 50px;
-height: 50px;
-}
-.plyr__control--overlaid svg {
-width: 20px;
-height: 20px;
-}
-.plyr__controls {
-flex-wrap: wrap;
-gap: 4px;
-padding: 4px;
-}
-}
-/* 🔥 Clase para ocultar controles */
-.plyr--hide-controls .plyr__controls {
-opacity: 0;
-pointer-events: none;
-transition: opacity 0.3s ease;
-}
-</style>
-<div class="player-wrapper">
-<video id="player" playsinline controls><!-- Plyr JS -->
-<script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"><script src="https://cdn.jsdelivr.net/npm/hls.js@latest"><script>
-const urlParams = new URLSearchParams(window.location.search);
-const videoUrl = urlParams.get("video");
-const video = document.getElementById("player");
-// Configuración base de Plyr
-const options = {
-title: "S&L Movie Player",
-controls: [
-'play-large', 'rewind', 'play', 'fast-forward',
-'progress', 'current-time', 'mute', 'volume',
-'captions', 'settings', 'pip', 'airplay', 'fullscreen'
-],
-settings: ['captions', 'quality', 'speed'],
-speed: { selected: 1, options: [0.5, 1, 1.25, 1.5, 2] },
-quality: { default: 1080, options: [360, 480, 720, 1080], forced: true }
-};
-let player;
-if (videoUrl) {
-if (Hls.isSupported() && videoUrl.endsWith(".m3u8")) {
-const hls = new Hls();
-hls.loadSource(videoUrl);
-hls.attachMedia(video);
-hls.on(Hls.Events.MANIFEST_PARSED, function () {
-const availableQualities = hls.levels.map(level => level.height).sort((a, b) => a - b);
-options.quality.options = availableQualities;
-options.quality.onChange = (quality) => {
-hls.levels.forEach((level, index) => {
-if (level.height === quality) hls.currentLevel = index;
-});
-};
-player = new Plyr(video, options);
-restoreProgress(player, videoUrl);
-enableAutoHideControls(player);
-});
-} else {
-video.src = videoUrl;
-player = new Plyr(video, options);
-restoreProgress(player, videoUrl);
-enableAutoHideControls(player);
-}
-} else {
-console.error("No video URL provided.");
-}
-// Guardar/restaurar progreso
-function restoreProgress(player, key) {
-const savedTime = localStorage.getItem("progress-" + key);
-if (savedTime) {
-player.once("canplay", () => {
-player.currentTime = parseFloat(savedTime);
-});
-}
-player.on("timeupdate", () => {
-localStorage.setItem("progress-" + key, player.currentTime);
-});
-}
-// 🔥 Auto-ocultar controles en móviles
-function enableAutoHideControls(player) {
-let hideTimeout;
-function resetHideTimer() {
-clearTimeout(hideTimeout);
-player.elements.container.classList.remove("plyr--hide-controls");
-hideTimeout = setTimeout(() => {
-if (!player.paused) {
-player.elements.container.classList.add("plyr--hide-controls");
-}
-}, 3000); // 3 segundos
-}
-// Detectar interacción del usuario
-["mousemove", "touchstart", "touchmove"].forEach(evt => {
-player.elements.container.addEventListener(evt, resetHideTimer);
-});
-// Resetear al iniciar
-resetHideTimer();
-}
-</script>
+    body {
+      margin: 0;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .player-wrapper {
+      width: 100%;
+      max-width: 1020px;
+    }
+
+    video {
+      width: 100%;
+      border-radius: 0px;
+      overflow: hidden;
+      background: #000;
+      display: block;
+    }
+
+    /* 🔥 Pantalla completa ocupa todo */
+    :fullscreen video,
+    :-webkit-full-screen video,
+    :-moz-full-screen video {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      border-radius: 0 !important;
+      object-fit: contain;
+      background: #000;
+    }
+
+    /* Personalizar botón Play */
+    .plyr__control--overlaid {
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+    }
+    .plyr__control--overlaid svg {
+      width: 25px;
+      height: 25px;
+      fill: #fff;
+    }
+
+    /* 🔥 Ajustes móviles */
+    @media (max-width: 600px) {
+      .plyr__control--overlaid {
+        width: 50px;
+        height: 50px;
+      }
+      .plyr__control--overlaid svg {
+        width: 20px;
+        height: 20px;
+      }
+      .plyr__controls {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px;
+      }
+    }
+
+    /* 🔥 Clase para ocultar controles */
+    .plyr--hide-controls .plyr__controls {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="player-wrapper">
+    <video id="player" playsinline controls></video>
+  </div>
+
+  <!-- Plyr JS -->
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoUrl = urlParams.get("video");
+    const video = document.getElementById("player");
+
+    // Configuración base de Plyr
+    const options = {
+      title: "S&L Movie Player",
+      controls: [
+        'play-large', 'rewind', 'play', 'fast-forward',
+        'progress', 'current-time', 'mute', 'volume',
+        'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+      ],
+      settings: ['captions', 'quality', 'speed'],
+      speed: { selected: 1, options: [0.5, 1, 1.25, 1.5, 2] },
+      quality: { default: 1080, options: [360, 480, 720, 1080], forced: true }
+    };
+
+    let player;
+
+    if (videoUrl) {
+      if (Hls.isSupported() && videoUrl.endsWith(".m3u8")) {
+        const hls = new Hls();
+        hls.loadSource(videoUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          const availableQualities = hls.levels.map(level => level.height).sort((a, b) => a - b);
+          options.quality.options = availableQualities;
+          options.quality.onChange = (quality) => {
+            hls.levels.forEach((level, index) => {
+              if (level.height === quality) hls.currentLevel = index;
+            });
+          };
+
+          player = new Plyr(video, options);
+          restoreProgress(player, videoUrl);
+          enableAutoHideControls(player);
+        });
+      } else {
+        video.src = videoUrl;
+        player = new Plyr(video, options);
+        restoreProgress(player, videoUrl);
+        enableAutoHideControls(player);
+      }
+    }
+
+    // Guardar/restaurar progreso
+    function restoreProgress(player, key) {
+      const savedTime = localStorage.getItem("progress-" + key);
+      if (savedTime) {
+        player.once("canplay", () => {
+          player.currentTime = parseFloat(savedTime);
+        });
+      }
+
+      player.on("timeupdate", () => {
+        localStorage.setItem("progress-" + key, player.currentTime);
+      });
+    }
+
+    // 🔥 Auto-ocultar controles en móviles
+    function enableAutoHideControls(player) {
+      let hideTimeout;
+
+      function resetHideTimer() {
+        clearTimeout(hideTimeout);
+        player.elements.container.classList.remove("plyr--hide-controls");
+        hideTimeout = setTimeout(() => {
+          if (!player.paused) {
+            player.elements.container.classList.add("plyr--hide-controls");
+          }
+        }, 3000); // 3 segundos
+      }
+
+      // Detectar interacción del usuario
+      ["mousemove", "touchstart", "touchmove"].forEach(evt => {
+        player.elements.container.addEventListener(evt, resetHideTimer);
+      });
+
+      // Resetear al iniciar
+      resetHideTimer();
+    }
+  </script>
 </body>
 </html>
-
-
-
-
-

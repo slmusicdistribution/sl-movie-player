@@ -8,7 +8,6 @@
   <!-- Plyr CSS -->
   <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
 
-  <!-- === CSS FIX (sustituir tu bloque <style> por este) === -->
   <style>
     body {
       margin: 0;
@@ -19,127 +18,91 @@
       height: 100vh;
     }
 
-    /* CONTENEDOR FIJO: padding-top trick (16:9) — seguro y estable */
+    /* 🔥 Contenedor con tamaño fijo */
     .player-wrapper {
       width: 100%;
       max-width: 1020px;
+      height: 580px; /* Ajusta esta altura si necesitas encajar exacto */
       position: relative;
-      padding-top: 56.25%;
       background: #000;
       overflow: hidden;
-      box-sizing: border-box;
     }
 
-    /* Video dentro del contenedor */
-    .player-wrapper video {
+    .player-wrapper video,
+    .player-wrapper .plyr {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: contain; /* Ajusta el video sin deformarlo */
       background: #000;
-      display: block;
     }
 
-    /* Hacer que el wrapper .plyr también llene el contenedor */
-    .player-wrapper .plyr {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    /* Controles siempre fijos en la parte inferior del contenedor */
-    .player-wrapper .plyr__controls {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      bottom: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 60;
-      pointer-events: auto;
-      background: rgba(0,0,0,0);
-      gap: 8px;
-      box-sizing: border-box;
-      padding: 0;
-      flex-wrap: nowrap;
-    }
-
-    .player-wrapper .plyr__controls .plyr__control {
-      flex: 0 0 auto;
-    }
-
-    /* Botón play sobrepuesto (centrado) */
-    .player-wrapper .plyr__control--overlaid {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 70;
-      background: rgba(0,0,0,0.6);
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .player-wrapper .plyr__control--overlaid svg {
-      width: 26px;
-      height: 26px;
-      fill: #fff;
-    }
-
-    /* Fullscreen adjustments */
+    /* Pantalla completa ocupa todo */
     :fullscreen .player-wrapper,
     :-webkit-full-screen .player-wrapper,
     :-moz-full-screen .player-wrapper {
       width: 100% !important;
       height: 100% !important;
       max-width: none !important;
-      padding-top: 0 !important;
-      position: fixed !important;
-      top: 0; left: 0; right: 0; bottom: 0;
-      z-index: 999999;
     }
-    :fullscreen .player-wrapper video,
-    :-webkit-full-screen .player-wrapper video,
-    :-moz-full-screen .player-wrapper video {
+
+    :fullscreen video,
+    :-webkit-full-screen video,
+    :-moz-full-screen video {
       width: 100% !important;
       height: 100% !important;
-      object-fit: contain !important;
-    }
-    :fullscreen .player-wrapper .plyr__controls,
-    :-webkit-full-screen .player-wrapper .plyr__controls,
-    :-moz-full-screen .player-wrapper .plyr__controls {
-      bottom: 20px;
-      left: 20px;
-      right: 20px;
+      object-fit: contain;
     }
 
-    /* Ajustes móviles */
-    @media (max-width: 720px) {
-      .player-wrapper { max-width: 100%; }
-      .player-wrapper .plyr__control--overlaid { width: 50px; height: 50px; }
-      .player-wrapper .plyr__control--overlaid svg { width: 20px; height: 20px; }
-      .player-wrapper .plyr__controls { bottom: 8px; left: 8px; right: 8px; gap:6px; }
-      .player-wrapper .plyr__controls .plyr__control { transform: scale(0.92); }
+    /* Personalizar botón Play */
+    .plyr__control--overlaid {
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+    }
+    .plyr__control--overlaid svg {
+      width: 25px;
+      height: 25px;
+      fill: #fff;
     }
 
-    .player-wrapper .plyr__controls { overflow: hidden; }
-    .plyr__controls, .plyr__control--overlaid { transition: transform .12s ease, opacity .12s ease; }
+    /* 🔥 Ajustes móviles */
+    @media (max-width: 600px) {
+      .player-wrapper {
+        height: 240px; /* más bajo en pantallas pequeñas */
+      }
+      .plyr__control--overlaid {
+        width: 50px;
+        height: 50px;
+      }
+      .plyr__control--overlaid svg {
+        width: 20px;
+        height: 20px;
+      }
+      .plyr__controls {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px;
+      }
+    }
+
+    /* 🔥 Clase para ocultar controles */
+    .plyr--hide-controls .plyr__controls {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
   </style>
-  <!-- === FIN CSS FIX === -->
 </head>
 <body>
   <div class="player-wrapper">
     <video id="player" playsinline controls></video>
   </div>
 
-  <!-- Plyr JS (NO TOCAR) -->
+  <!-- Plyr JS -->
   <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
@@ -204,7 +167,7 @@
       });
     }
 
-    // Auto-ocultar controles en móviles
+    // 🔥 Auto-ocultar controles en móviles
     function enableAutoHideControls(player) {
       let hideTimeout;
 

@@ -21,7 +21,6 @@
     .player-wrapper {
       width: 100%;
       max-width: 1020px;
-      position: relative;
     }
 
     video {
@@ -57,21 +56,6 @@
       fill: #fff;
     }
 
-    /* 🔥 Controles y play en posición fija */
-    .plyr__controls {
-      position: absolute !important;
-      bottom: 0 !important;
-      left: 0 !important;
-      width: 100% !important;
-      box-sizing: border-box;
-    }
-    .plyr__control--overlaid {
-      position: absolute !important;
-      top: 50% !important;
-      left: 50% !important;
-      transform: translate(-50%, -50%) !important;
-    }
-
     /* 🔥 Ajustes móviles */
     @media (max-width: 600px) {
       .plyr__control--overlaid {
@@ -81,6 +65,11 @@
       .plyr__control--overlaid svg {
         width: 20px;
         height: 20px;
+      }
+      .plyr__controls {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px;
       }
     }
 

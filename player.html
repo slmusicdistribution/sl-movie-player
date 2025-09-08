@@ -22,7 +22,7 @@
     .player-wrapper {
       width: 100%;
       max-width: 1020px;
-      height: 580px; /* Ajusta esta altura si necesitas encajar exacto */
+      height: 580px; /* AJUSTA este valor para que encaje exacto */
       position: relative;
       background: #000;
       overflow: hidden;
@@ -35,7 +35,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      object-fit: contain; /* Ajusta el video sin deformarlo */
+      object-fit: contain; /* El video se adapta pero los controles no se mueven */
       background: #000;
     }
 
@@ -55,46 +55,6 @@
       height: 100% !important;
       object-fit: contain;
     }
-
-    /* Personalizar botón Play */
-    .plyr__control--overlaid {
-      background: rgba(0, 0, 0, 0.6);
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-    }
-    .plyr__control--overlaid svg {
-      width: 25px;
-      height: 25px;
-      fill: #fff;
-    }
-
-    /* 🔥 Ajustes móviles */
-    @media (max-width: 600px) {
-      .player-wrapper {
-        height: 240px; /* más bajo en pantallas pequeñas */
-      }
-      .plyr__control--overlaid {
-        width: 50px;
-        height: 50px;
-      }
-      .plyr__control--overlaid svg {
-        width: 20px;
-        height: 20px;
-      }
-      .plyr__controls {
-        flex-wrap: wrap;
-        gap: 4px;
-        padding: 4px;
-      }
-    }
-
-    /* 🔥 Clase para ocultar controles */
-    .plyr--hide-controls .plyr__controls {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
   </style>
 </head>
 <body>
@@ -111,7 +71,6 @@
     const videoUrl = urlParams.get("video");
     const video = document.getElementById("player");
 
-    // Configuración base de Plyr
     const options = {
       title: "S&L Movie Player",
       controls: [
@@ -143,13 +102,11 @@
 
           player = new Plyr(video, options);
           restoreProgress(player, videoUrl);
-          enableAutoHideControls(player);
         });
       } else {
         video.src = videoUrl;
         player = new Plyr(video, options);
         restoreProgress(player, videoUrl);
-        enableAutoHideControls(player);
       }
     }
 
@@ -165,27 +122,6 @@
       player.on("timeupdate", () => {
         localStorage.setItem("progress-" + key, player.currentTime);
       });
-    }
-
-    // 🔥 Auto-ocultar controles en móviles
-    function enableAutoHideControls(player) {
-      let hideTimeout;
-
-      function resetHideTimer() {
-        clearTimeout(hideTimeout);
-        player.elements.container.classList.remove("plyr--hide-controls");
-        hideTimeout = setTimeout(() => {
-          if (!player.paused) {
-            player.elements.container.classList.add("plyr--hide-controls");
-          }
-        }, 3000); // 3 segundos
-      }
-
-      ["mousemove", "touchstart", "touchmove"].forEach(evt => {
-        player.elements.container.addEventListener(evt, resetHideTimer);
-      });
-
-      resetHideTimer();
     }
   </script>
 </body>

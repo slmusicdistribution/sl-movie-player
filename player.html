@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>S&L Movie Player</title>
 
-  <!-- Plyr CSS -->
   <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
 
   <style>
@@ -18,20 +17,37 @@
       height: 100vh;
     }
 
+    /* 🔥 CAMBIO 1: Convertimos el 'wrapper' en un contenedor con proporción 16:9 */
     .player-wrapper {
+      position: relative; /* Necesario para posicionar el video dentro */
       width: 100%;
       max-width: 1020px;
+      background: #000; /* Fondo negro para las barras */
+      
+      /* El truco para forzar la proporción 16:9 (9 / 16 = 0.5625) */
+      height: 0;
+      padding-top: 56.25%; 
     }
 
-    video {
+    /* 🔥 CAMBIO 2: Hacemos que el reproductor Plyr llene ese contenedor */
+    /* Plyr crea su propio contenedor con la clase .plyr, lo seleccionamos */
+    .player-wrapper .plyr {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
       width: 100%;
-      border-radius: 0px;
-      overflow: hidden;
-      background: #000;
-      display: block;
+    }
+    
+    /* 🔥 CAMBIO 3: Hacemos que el video se ajuste DENTRO del reproductor */
+    /* Con 'object-fit' nos aseguramos de que el video no se deforme */
+    video {
+        object-fit: contain; /* ESTA ES LA CLAVE */
     }
 
-    /* 🔥 Pantalla completa ocupa todo */
+    /* --- Tus otros estilos (sin cambios) --- */
+
+    /* Pantalla completa ocupa todo */
     :fullscreen video,
     :-webkit-full-screen video,
     :-moz-full-screen video {
@@ -56,7 +72,7 @@
       fill: #fff;
     }
 
-    /* 🔥 Ajustes móviles */
+    /* Ajustes móviles */
     @media (max-width: 600px) {
       .plyr__control--overlaid {
         width: 50px;
@@ -73,7 +89,7 @@
       }
     }
 
-    /* 🔥 Clase para ocultar controles */
+    /* Clase para ocultar controles */
     .plyr--hide-controls .plyr__controls {
       opacity: 0;
       pointer-events: none;
@@ -86,11 +102,11 @@
     <video id="player" playsinline controls></video>
   </div>
 
-  <!-- Plyr JS -->
   <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
   <script>
+    // Tu JavaScript no necesita ningún cambio, funciona perfecto.
     const urlParams = new URLSearchParams(window.location.search);
     const videoUrl = urlParams.get("video");
     const video = document.getElementById("player");
@@ -151,7 +167,7 @@
       });
     }
 
-    // 🔥 Auto-ocultar controles en móviles
+    // Auto-ocultar controles en móviles
     function enableAutoHideControls(player) {
       let hideTimeout;
 

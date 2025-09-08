@@ -19,18 +19,19 @@
     }
 
     .player-wrapper {
-  width: 100%;
-  max-width: 1020px;
-  background: #000; /* fondo negro para rellenar */
+  width: 1020px;      /* ancho fijo */
+  height: 570px;       /* altura fija */
+  background: #000;    /* relleno negro si el video es más pequeño */
 }
 
 video {
   width: 100%;
-  height: 570px; /* fija la altura que quieras */
-  object-fit: contain; /* mantiene proporciones y rellena con negro */
+  height: 100%;
+  object-fit: contain; /* mantiene proporciones, rellena con negro */
   background: #000;
   display: block;
 }
+
 
 
     /* 🔥 Pantalla completa ocupa todo */
@@ -173,4 +174,5 @@ video {
   </script>
 </body>
 </html>
+
 

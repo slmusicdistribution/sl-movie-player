@@ -1,67 +1,176 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>S&L Movie Player (MKV con audio selector)</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S&L Movie Player</title>
+
+  <!-- Plyr CSS -->
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
   <style>
     body {
       margin: 0;
-      background: black;
+      background: #000;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
     }
-    #player {
+
+    .player-wrapper {
       width: 1020px;
       height: 610px;
-      background: black;
+      background: #000;
+      position: relative;
     }
-    #audio-tracks {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      z-index: 1000;
+
+    video {
+      width: 100%;
+      border-radius: 0px;
+      object-fit: contain;
+      overflow: hidden;
+      background: #000;
+      display: block;
+    }
+
+    :fullscreen video,
+    :-webkit-full-screen video,
+    :-moz-full-screen video {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      border-radius: 0 !important;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .plyr__control--overlaid {
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+    }
+    .plyr__control--overlaid svg {
+      width: 25px;
+      height: 25px;
+      fill: #fff;
+    }
+
+    @media (max-width: 600px) {
+      .plyr__control--overlaid {
+        width: 50px;
+        height: 50px;
+      }
+      .plyr__control--overlaid svg {
+        width: 20px;
+        height: 20px;
+      }
+      .plyr__controls {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px;
+      }
+    }
+
+    .plyr--hide-controls .plyr__controls {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
     }
   </style>
 </head>
 <body>
-  <div id="player"></div>
-  <select id="audio-tracks"></select>
+  <div class="player-wrapper">
+    <video id="player" playsinline controls></video>
+  </div>
 
-  <script src="https://unpkg.com/minimpv/dist/mpv.js"></script>
+  <!-- Plyr JS -->
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
   <script>
-    const playerContainer = document.getElementById("player");
-    const audioSelect = document.getElementById("audio-tracks");
-
     const urlParams = new URLSearchParams(window.location.search);
-    const videoUrl = urlParams.get("video"); // ?video=https://ejemplo.com/peli.mkv
+    let videoUrl = urlParams.get("video");
+    const video = document.getElementById("player");
 
-    // Iniciar mpv
-    const mpv = new MPV(playerContainer, {
-      wasmUrl: "https://unpkg.com/minimpv/dist/mpv.wasm",
-      workerUrl: "https://unpkg.com/minimpv/dist/mpv.worker.js",
-    });
+    // 🚀 Proxy para saltar CORS
+    if (videoUrl && videoUrl.startsWith("http")) {
+      videoUrl = "https://cors-anywhere.herokuapp.com/" + videoUrl;
+    }
 
-    mpv.load(videoUrl);
+    const options = {
+      title: "S&L Movie Player",
+      controls: [
+        'play-large', 'rewind', 'play', 'fast-forward',
+        'progress', 'current-time', 'mute', 'volume',
+        'captions', 'settings', 'pip', 'airplay', 'fullscreen'
+      ],
+      settings: ['captions', 'quality', 'speed'],
+      speed: { selected: 1, options: [0.5, 1, 1.25, 1.5, 2] },
+      quality: { default: 1080, options: [360, 480, 720, 1080], forced: true }
+    };
 
-    // Cuando cargue, obtener pistas de audio
-    mpv.on("ready", async () => {
-      const tracks = await mpv.getProperty("track-list");
+    let player;
 
-      const audioTracks = tracks.filter(t => t.type === "audio");
-      audioTracks.forEach(track => {
-        const option = document.createElement("option");
-        option.value = track.id;
-        option.textContent = track.lang || `Audio ${track.id}`;
-        audioSelect.appendChild(option);
+    if (videoUrl) {
+      if (Hls.isSupported() && videoUrl.endsWith(".m3u8")) {
+        const hls = new Hls();
+        hls.loadSource(videoUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, function () {
+          const availableQualities = hls.levels.map(level => level.height).sort((a, b) => a - b);
+          options.quality.options = availableQualities;
+          options.quality.onChange = (quality) => {
+            hls.levels.forEach((level, index) => {
+              if (level.height === quality) hls.currentLevel = index;
+            });
+          };
+
+          player = new Plyr(video, options);
+          restoreProgress(player, videoUrl);
+          enableAutoHideControls(player);
+        });
+      } else {
+        video.src = videoUrl;
+        player = new Plyr(video, options);
+        restoreProgress(player, videoUrl);
+        enableAutoHideControls(player);
+      }
+    }
+
+    // Guardar/restaurar progreso
+    function restoreProgress(player, key) {
+      const savedTime = localStorage.getItem("progress-" + key);
+      if (savedTime) {
+        player.once("canplay", () => {
+          player.currentTime = parseFloat(savedTime);
+        });
+      }
+
+      player.on("timeupdate", () => {
+        localStorage.setItem("progress-" + key, player.currentTime);
       });
+    }
 
-      // cambiar pista al seleccionar
-      audioSelect.addEventListener("change", () => {
-        mpv.setProperty("aid", parseInt(audioSelect.value));
+    // 🔥 Auto-ocultar controles
+    function enableAutoHideControls(player) {
+      let hideTimeout;
+      function resetHideTimer() {
+        clearTimeout(hideTimeout);
+        player.elements.container.classList.remove("plyr--hide-controls");
+        hideTimeout = setTimeout(() => {
+          if (!player.paused) {
+            player.elements.container.classList.add("plyr--hide-controls");
+          }
+        }, 3000);
+      }
+      ["mousemove", "touchstart", "touchmove"].forEach(evt => {
+        player.elements.container.addEventListener(evt, resetHideTimer);
       });
-    });
+      resetHideTimer();
+    }
   </script>
 </body>
 </html>

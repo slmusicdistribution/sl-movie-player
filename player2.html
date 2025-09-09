@@ -1,41 +1,198 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reproductor Plyr</title>
-    <!-- CSS de Plyr -->
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
-    <style>
-        body {
-            margin: 0;
-            background-color: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .plyr {
-            width: 100%;
-            max-width: 900px;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>S&L Movie Player — MKV (ffmpeg.wasm)</title>
+
+  <style>
+    body { margin:0; font-family: Arial, Helvetica, sans-serif; background:#000; color:#fff; display:flex; flex-direction:column; align-items:center; }
+    .wrap { width:100%; max-width:1100px; padding:16px; box-sizing:border-box; }
+    .video-box { width:100%; background:#000; display:flex; justify-content:center; align-items:center; }
+    video { width:100%; max-height:640px; background:#000; }
+    .status { margin-top:10px; color:#ddd; font-size:14px; }
+    .progress { width:100%; height:10px; background:#222; border-radius:6px; overflow:hidden; margin-top:8px; }
+    .bar { height:100%; width:0%; background:linear-gradient(90deg,#e50914,#ff6b6b); transition:width .2s; }
+    .log { margin-top:12px; max-height:140px; overflow:auto; background:#111; padding:8px; border-radius:6px; font-size:12px; color:#9aa; }
+    .controls { margin-top:12px; display:flex; gap:8px; align-items:center; }
+    .btn { background:#222; color:#fff; border:1px solid #333; padding:8px 12px; cursor:pointer; border-radius:6px; }
+    .btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .note { color:#bbb; margin-top:8px; font-size:13px; }
+  </style>
 </head>
 <body>
+  <div class="wrap">
+    <h2>S&L Movie Player — prueba .mkv en navegador (ffmpeg.wasm)</h2>
 
-    <video class="plyr" controls crossorigin>
-        <!-- Cambia el enlace por el MP4 de Internet Archive -->
-        <source src="https://archive.org/download/mi_video/mi_video.mp4" type="video/mp4" />
-        Tu navegador no soporta este video.
-    </video>
+    <div class="video-box">
+      <video id="player" controls crossorigin="anonymous"></video>
+    </div>
 
-    <!-- JS de Plyr -->
-    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
-    <script>
-        const player = new Plyr('.plyr', {
-            autoplay: false,
-            loop: { active: false },
-        });
-    </script>
+    <div class="status" id="status">Esperando parámetro <code>?video=</code> en la URL...</div>
+
+    <div class="progress" title="Progreso">
+      <div class="bar" id="bar"></div>
+    </div>
+
+    <div class="controls">
+      <button id="startBtn" class="btn">Iniciar transcodificación</button>
+      <button id="abortBtn" class="btn" disabled>Cancelar</button>
+      <span style="margin-left:auto" id="timeInfo"></span>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <div class="note">
+      Nota: la transcodificación se hace en el navegador. Archivos grandes o dispositivos móviles pueden fallar.
+      Si ves errores de CORS revisa que el servidor del `.mkv` permita peticiones desde tu origen.
+    </div>
+  </div>
+
+  <!-- ffmpeg.wasm (CDN) -->
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.8/dist/ffmpeg.min.js"></script>
+  <script>
+    (async function(){
+      const { createFFmpeg, fetchFile } = FFmpeg;
+      const statusEl = document.getElementById('status');
+      const logEl = document.getElementById('log');
+      const barEl = document.getElementById('bar');
+      const player = document.getElementById('player');
+      const startBtn = document.getElementById('startBtn');
+      const abortBtn = document.getElementById('abortBtn');
+      const timeInfo = document.getElementById('timeInfo');
+
+      function log(msg){ console.log(msg); logEl.textContent = (new Date().toLocaleTimeString()) + " — " + msg + "\n" + logEl.textContent; }
+      function setStatus(t){ statusEl.textContent = t; log(t); }
+      function setProgress(r){ barEl.style.width = Math.min(100, Math.floor(r*100)) + '%'; }
+
+      const params = new URLSearchParams(window.location.search);
+      let videoUrl = params.get('video');
+      if (!videoUrl) {
+        setStatus("Parametro ?video= no encontrado. Pega la URL en la barra y recarga.");
+        startBtn.disabled = true;
+        return;
+      }
+      videoUrl = decodeURIComponent(videoUrl);
+      setStatus("Video detectado: " + videoUrl);
+
+      // Crear ffmpeg instancia
+      const ffmpeg = createFFmpeg({
+        log: true,
+        progress: p => {
+          if (p && p.ratio) {
+            setProgress(p.ratio * 0.6); // progreso de ffmpeg (0..0.6)
+            timeInfo.textContent = "Transcodificando: " + Math.round(p.ratio*100) + "%";
+          }
+        }
+      });
+
+      let controller = null;
+      let abortRequested = false;
+
+      startBtn.addEventListener('click', async () => {
+        startBtn.disabled = true;
+        abortBtn.disabled = false;
+        setStatus("Cargando ffmpeg.wasm (puede tardar unos segundos)...");
+        try {
+          await ffmpeg.load();
+        } catch (e) {
+          setStatus("Error al cargar ffmpeg.wasm: " + e.message);
+          startBtn.disabled = false;
+          abortBtn.disabled = true;
+          return;
+        }
+        setStatus("Descargando archivo .mkv (comprueba CORS)...");
+        controller = new AbortController();
+        const signal = controller.signal;
+        try {
+          const resp = await fetch(videoUrl, { signal });
+          if (!resp.ok) throw new Error("Respuesta del servidor: " + resp.status);
+          const contentLength = resp.headers.get('Content-Length');
+          let received = 0;
+          const reader = resp.body.getReader();
+          const chunks = [];
+          while(true){
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            received += value.length;
+            if (contentLength) setProgress(0.05 + (received / contentLength) * 0.1); // pequeño progreso (5-15%)
+          }
+          const fileBuffer = concatChunks(chunks);
+          setStatus("Archivo descargado — tamaño: " + Math.round(fileBuffer.byteLength/1024/1024) + " MB");
+          log("Escribiendo archivo en FS de ffmpeg...");
+          ffmpeg.FS('writeFile', 'input.mkv', new Uint8Array(fileBuffer));
+
+          // Intentar transcodificar a MP4 (H.264 + AAC)
+          setStatus("Iniciando transcodificación (esto puede tardar)...");
+          log("Ejecutando: ffmpeg -i input.mkv -c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 128k -movflags +faststart output.mp4");
+          try {
+            await ffmpeg.run(
+              '-i','input.mkv',
+              '-c:v','libx264','-preset','veryfast','-crf','23',
+              '-c:a','aac','-b:a','128k',
+              '-movflags','+faststart',
+              'output.mp4'
+            );
+          } catch (e) {
+            log("Transcodificación con libx264 falló: " + e.message);
+            setStatus("Transcodificación con libx264 falló, intentando copia de flujo si es compatible...");
+            // intentar copy (si codecs ya son mp4-compatibles)
+            try {
+              await ffmpeg.run('-i','input.mkv','-c','copy','output.mp4');
+            } catch (e2) {
+              setStatus("No se pudo transcodificar ni copiar streams: " + e2.message);
+              startBtn.disabled = false;
+              abortBtn.disabled = true;
+              log("Error final en ffmpeg: " + e2.message);
+              return;
+            }
+          }
+
+          setProgress(0.95);
+          setStatus("Preparando video para reproducir...");
+          const data = ffmpeg.FS('readFile', 'output.mp4');
+          const blob = new Blob([data.buffer], { type: 'video/mp4' });
+          const url = URL.createObjectURL(blob);
+          player.src = url;
+          player.load();
+          setProgress(1);
+          setStatus("Listo: reproducción preparada (video transcodificado en el navegador).");
+          timeInfo.textContent = "";
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            setStatus("Descarga cancelada por el usuario.");
+            log("Descarga abortada.");
+          } else {
+            setStatus("Error durante descarga o transcodificación: " + err.message);
+            log("Error: " + (err && err.stack ? err.stack : err));
+          }
+          startBtn.disabled = false;
+          abortBtn.disabled = true;
+        }
+      });
+
+      abortBtn.addEventListener('click', () => {
+        if (controller) controller.abort();
+        abortRequested = true;
+        startBtn.disabled = false;
+        abortBtn.disabled = true;
+      });
+
+      // helper: concat Uint8Array chunks to ArrayBuffer
+      function concatChunks(chunks){
+        let total = 0;
+        for (let c of chunks) total += c.length;
+        const result = new Uint8Array(total);
+        let offset = 0;
+        for (let c of chunks) {
+          result.set(c, offset);
+          offset += c.length;
+        }
+        return result.buffer;
+      }
+
+    })();
+  </script>
 </body>
 </html>

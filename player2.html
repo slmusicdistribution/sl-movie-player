@@ -17,90 +17,17 @@
       align-items: center;
       height: 100vh;
     }
-
     .player-wrapper {
       width: 1020px;
       height: 610px;
       background: #000;
       position: relative;
     }
-
     video {
       width: 100%;
-      border-radius: 0px;
-      object-fit: contain;
-      overflow: hidden;
-      background: #000;
-      display: block;
-    }
-
-    /* 🔥 Pantalla completa ocupa todo */
-    :fullscreen video,
-    :-webkit-full-screen video,
-    :-moz-full-screen video {
-      width: 100% !important;
-      height: 100% !important;
-      max-width: none !important;
-      border-radius: 0 !important;
+      height: 100%;
       object-fit: contain;
       background: #000;
-    }
-
-    /* Personalizar botón Play */
-    .plyr__control--overlaid {
-      background: rgba(0, 0, 0, 0.6);
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-    }
-    .plyr__control--overlaid svg {
-      width: 25px;
-      height: 25px;
-      fill: #fff;
-    }
-
-    /* 🔥 Ajustes móviles */
-    @media (max-width: 600px) {
-      .plyr__control--overlaid {
-        width: 50px;
-        height: 50px;
-      }
-      .plyr__control--overlaid svg {
-        width: 20px;
-        height: 20px;
-      }
-      .plyr__controls {
-        flex-wrap: wrap;
-        gap: 4px;
-        padding: 4px;
-      }
-    }
-
-    /* 🔥 Clase para ocultar controles */
-    .plyr--hide-controls .plyr__controls {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    /* 🔥 Estilo del selector de idioma */
-    .audio-track-selector {
-      position: absolute;
-      bottom: 60px;
-      right: 20px;
-      z-index: 9999;
-      background: rgba(0,0,0,0.6);
-      color: #fff;
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-    .audio-track-selector select {
-      background: #000;
-      color: #fff;
-      border: 1px solid #555;
-      border-radius: 4px;
-      padding: 3px;
     }
   </style>
 </head>
@@ -112,13 +39,13 @@
   <!-- Plyr JS -->
   <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     const videoUrl = urlParams.get("video");
     const video = document.getElementById("player");
 
-    // Configuración base de Plyr
     const options = {
       title: "S&L Movie Player",
       controls: [
@@ -127,113 +54,32 @@
         'captions', 'settings', 'pip', 'airplay', 'fullscreen'
       ],
       settings: ['captions', 'quality', 'speed'],
-      speed: { selected: 1, options: [0.5, 1, 1.25, 1.5, 2] },
-      quality: { default: 1080, options: [360, 480, 720, 1080], forced: true }
+      speed: { selected: 1, options: [0.5, 1, 1.25, 1.5, 2] }
     };
 
     let player;
 
     if (videoUrl) {
-      if (Hls.isSupported() && videoUrl.endsWith(".m3u8")) {
-        const hls = new Hls();
-        hls.loadSource(videoUrl);
-        hls.attachMedia(video);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, function () {
-          const availableQualities = hls.levels.map(level => level.height).sort((a, b) => a - b);
-          options.quality.options = availableQualities;
-          options.quality.onChange = (quality) => {
-            hls.levels.forEach((level, index) => {
-              if (level.height === quality) hls.currentLevel = index;
-            });
-          };
-
+      if (videoUrl.endsWith(".m3u8")) {
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hls.loadSource(videoUrl);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            player = new Plyr(video, options);
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = videoUrl;
           player = new Plyr(video, options);
-          restoreProgress(player, videoUrl);
-          enableAutoHideControls(player);
-          addAudioTrackSelector(video, player);
-        });
+        }
+      } else if (videoUrl.endsWith(".mpd")) {
+        const dash = dashjs.MediaPlayer().create();
+        dash.initialize(video, videoUrl, true);
+        player = new Plyr(video, options);
       } else {
         video.src = videoUrl;
         player = new Plyr(video, options);
-        restoreProgress(player, videoUrl);
-        enableAutoHideControls(player);
-        addAudioTrackSelector(video, player);
       }
-    }
-
-    // Guardar/restaurar progreso
-    function restoreProgress(player, key) {
-      const savedTime = localStorage.getItem("progress-" + key);
-      if (savedTime) {
-        player.once("canplay", () => {
-          player.currentTime = parseFloat(savedTime);
-        });
-      }
-
-      player.on("timeupdate", () => {
-        localStorage.setItem("progress-" + key, player.currentTime);
-      });
-    }
-
-    // 🔥 Auto-ocultar controles en móviles
-    function enableAutoHideControls(player) {
-      let hideTimeout;
-
-      function resetHideTimer() {
-        clearTimeout(hideTimeout);
-        player.elements.container.classList.remove("plyr--hide-controls");
-        hideTimeout = setTimeout(() => {
-          if (!player.paused) {
-            player.elements.container.classList.add("plyr--hide-controls");
-          }
-        }, 3000); // 3 segundos
-      }
-
-      ["mousemove", "touchstart", "touchmove"].forEach(evt => {
-        player.elements.container.addEventListener(evt, resetHideTimer);
-      });
-
-      resetHideTimer();
-    }
-
-    // 🔥 Selector de pistas de audio
-    function addAudioTrackSelector(video, player) {
-      if (!video.audioTracks) {
-        console.warn("El navegador no soporta audioTracks directamente.");
-        return;
-      }
-
-      const tracks = video.audioTracks;
-      if (!tracks || tracks.length <= 1) return; // no hay múltiples pistas
-
-      const container = document.createElement("div");
-      container.className = "audio-track-selector";
-
-      const label = document.createElement("label");
-      label.textContent = "Idioma: ";
-      label.style.marginRight = "5px";
-
-      const select = document.createElement("select");
-
-      for (let i = 0; i < tracks.length; i++) {
-        const option = document.createElement("option");
-        option.value = i;
-        option.textContent = tracks[i].label || `Pista ${i + 1}`;
-        if (tracks[i].enabled) option.selected = true;
-        select.appendChild(option);
-      }
-
-      select.addEventListener("change", (e) => {
-        const index = parseInt(e.target.value);
-        for (let i = 0; i < tracks.length; i++) {
-          tracks[i].enabled = (i === index);
-        }
-      });
-
-      container.appendChild(label);
-      container.appendChild(select);
-      player.elements.container.appendChild(container);
     }
   </script>
 </body>
